@@ -96,12 +96,17 @@ export class HostConnectionService extends Service implements HostConnectionHand
   /** Apply the configured Host/Origin fence, then browser authentication. */
   requestRejection(request: ConnectionTrustRequest): ConnectionRequestRejection {
     if (!isTrustedApiRequest(request, this.trustedHosts)) return 403
-    return this.browserAuth.isAuthenticated(request) ? undefined : 401
+    // madazi trusted-host bypass (patch 03): the platform's auth boundary is the
+    // edge forwardAuth login gate; the in-process BrowserAuth cookie wall is
+    // redundant for trusted hosts, and the trustedHosts fence above still applies.
+    return undefined
   }
 
   /** Authenticate an index request through the process-token exchange or cookie. */
   authorizeIndex(request: ConnectionIndexRequest, response: ConnectionIndexResponse): boolean {
-    return this.browserAuth.authorizeIndex(request, response)
+    // madazi trusted-host bypass (patch 03): serve the index unconditionally;
+    // access control happens at the platform login gate.
+    return true
   }
 
   /** Add this process's launch token to the clean application URL. */

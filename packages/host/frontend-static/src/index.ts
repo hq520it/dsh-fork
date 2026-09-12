@@ -119,7 +119,13 @@ export function apply(ctx: Context, config: Config): void {
   // served form anchors them at the site root ahead of every URL-bearing tag.
   const renderIndex = async (): Promise<string> => {
     const body = ctx.webServer.renderIndex(await readFile(distIndex, 'utf8'))
-    return body.replace(/<head(?:\s[^>]*)?>/i, open => `${open}<base href="/">`)
+    return body.replace(/<head(?:\s[^>]*)?>/i, open =>
+      // madazi loopback fence relax (patch 01): served pages carry the trusted
+      // loopback flag because the public deployment sits behind the platform
+      // login gate; `isLoopback` then reports the privileged surface reachable
+      // regardless of the page authority (unlocks the settings mirror / model tab
+      // over the public domain).
+      `${open}<base href="/"><script>window.__DSH_TRUSTED_LOOPBACK__=true;</script>`)
   }
   ctx.effect(() => ctx.webServer.registerFallback(async (req, res) => {
     // Non-GET/HEAD without a matching named route is 405 (fallback-only
