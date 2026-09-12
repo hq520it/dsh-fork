@@ -16,6 +16,7 @@ import { workspaceTitleOf } from '@deepseek-ai/dsh-util-workspace-path'
 import {
   indexSubagentDescendants, type SubagentDescendantSummary,
 } from './subagent-lineage.ts'
+import { gatedList, gatedWorkspaces } from './membership-gate.ts'
 
 /** Group key for Sessions outside every Workspace. */
 export const UNGROUPED_KEY = ''
@@ -296,6 +297,9 @@ export function deriveGroups(
   pendingInteractions: SessionPendingInteractions,
   view: TreeView,
 ): GroupNode[] {
+  // madazi membership gate: never render projects outside the caller's table.
+  list = gatedList(list)
+  workspaces = gatedWorkspaces(workspaces)
   const archived = new Set(archivedSessionIds)
   const expandedGroups = new Set(view.expandedGroups)
   const descendants = indexSubagentDescendants(list.byId)
@@ -337,6 +341,8 @@ export function deriveFlat(
   archivedSessionIds: readonly SessionId[],
   pendingInteractions: SessionPendingInteractions,
 ): SessionNode[] {
+  // madazi membership gate: the flat list projects the same caller-visible set.
+  list = gatedList(list)
   const archived = new Set(archivedSessionIds)
   const descendants = indexSubagentDescendants(list.byId)
   const rows: SessionSummary[] = []
@@ -371,6 +377,9 @@ export function deriveSearchResults(
   content: { items: readonly SessionSearchResultItem[]; hasMore: boolean },
   limit: number,
 ): SearchResultSet {
+  // madazi membership gate: search never surfaces a foreign project's rows.
+  list = gatedList(list)
+  workspaces = gatedWorkspaces(workspaces)
   const q = query.trim().toLowerCase()
   if (q === '') return { items: [], hasMore: false }
   const archived = new Set(archivedSessionIds)

@@ -9,7 +9,7 @@
  * occupant's own create-folder affordance already covers creating one.
  */
 import type { ReactNode, RefObject } from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import {
   Button, IconFolderClose16, IconPlusOutline16, Menu, Modal, type MenuEntry,
 } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -17,6 +17,9 @@ import type {
   WorkspaceId, WorkspaceSnapshot, WorkspaceView,
 } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
+import {
+  gatedWorkspaces, getMembershipVersion, startMembershipWatch, subscribeMembership,
+} from './membership-gate.ts'
 import type { DirectoryFlowOwnerProps, WorkspacePickerProps } from './contract/slots.ts'
 import css from './WorkspacePicker.module.css'
 
@@ -70,7 +73,16 @@ export function WorkspacePickFlow({
   selectedId,
 }: WorkspacePickFlowProps) {
   const workspaceSnapshot = useWorkspaces(state => state)
-  const workspaces = workspaceSnapshot.items
+  // madazi membership gate: the pick list only offers the caller's projects;
+  // gatedWorkspaces output is memoized on the table version (see its cache).
+  const gateVersion = useSyncExternalStore(subscribeMembership, getMembershipVersion)
+  useEffect(() => {
+    startMembershipWatch()
+  }, [])
+  const workspaces = useMemo(
+    () => gatedWorkspaces(workspaceSnapshot.items),
+    [workspaceSnapshot.items, gateVersion],
+  )
   const getAnchorRect = useCallback(
     () => anchorRef?.current?.getBoundingClientRect() ?? null,
     [anchorRef],

@@ -11,6 +11,9 @@ import type {
 } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import {
+  gatedWorkspaces, isDeniedPath, membershipIsReady, subscribeMembership,
+} from './membership-gate.ts'
 
 /** Workspace archive and directory operations consumed by Client UI domains. */
 export interface UiWorkspace {
@@ -113,6 +116,11 @@ class UiWorkspaceService extends Service implements UiWorkspace {
     if (workspace === undefined) {
       throw new Error(`uiWorkspace.connectWorkspace: unknown workspace ${workspaceId}`)
     }
+    // madazi membership gate: refuse connecting into a foreign project (the
+    // auto-selection and recent-workspace paths must never land here either).
+    if (isDeniedPath(workspace.path)) {
+      throw new Error('uiWorkspace.connectWorkspace: workspace denied')
+    }
     const inflight = this.connecting.get(workspaceId)
     if (inflight !== undefined) return inflight
 
@@ -155,11 +163,14 @@ class UiWorkspaceService extends Service implements UiWorkspace {
     const workspace = this.workspaces.list.getSnapshot()
     const sessions = this.sessions.list.getSnapshot()
     const current = sessions.current
+    // madazi membership gate: inherit/recent targets only ever come from the
+    // caller's project subset.
+    const gateItems = gatedWorkspaces(workspace.items)
     const currentWorkspaceId = current === undefined
       ? undefined
-      : workspace.items.find(item => item.sessionIds.includes(current))?.workspaceId
+      : gateItems.find(item => item.sessionIds.includes(current))?.workspaceId
     const recent = workspace.phase === 'ready' && sessions.phase === 'ready'
-      ? recentWorkspace(workspace.items, sessions.byId)
+      ? recentWorkspace(gateItems, sessions.byId)
       : undefined
     const target = workspaceId ?? currentWorkspaceId ?? recent
     if (target === undefined) {
@@ -204,10 +215,20 @@ class UiWorkspaceService extends Service implements UiWorkspace {
       const sessions = this.sessions.list.getSnapshot()
       if (workspace.phase !== 'ready' || sessions.phase !== 'ready') return
       if (sessions.current !== undefined) {
+        // madazi membership gate: a locally restored current inside a foreign
+        // project is discarded rather than auto-connected into someone else's.
+        const restored = sessions.byId[sessions.current]
+        if (restored !== undefined && isDeniedPath(restored.cwd)) {
+          this.sessions.clear()
+          return
+        }
         initial = 'done'
         return
       }
-      const target = recentWorkspace(workspace.items, sessions.byId)
+      // madazi membership gate: no auto-selection until the caller's project
+      // table has arrived (fail-closed — never connect a foreign recent).
+      if (!membershipIsReady()) return
+      const target = recentWorkspace(gatedWorkspaces(workspace.items), sessions.byId)
       if (target === undefined) {
         initial = 'done'
         return
@@ -230,9 +251,13 @@ class UiWorkspaceService extends Service implements UiWorkspace {
     }
     const disposeWorkspaces = this.workspaces.list.subscribe(reconcile)
     const disposeSessions = this.sessions.list.subscribe(reconcile)
+    // madazi membership gate: the table becoming ready (or changing) must
+    // re-run reconcile so the initial selection settles on the caller's view.
+    const disposeMembership = subscribeMembership(reconcile)
     reconcile()
     return () => {
       this.lifetime.abort()
+      disposeMembership()
       disposeSessions()
       disposeWorkspaces()
     }
