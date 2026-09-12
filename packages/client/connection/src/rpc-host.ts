@@ -103,9 +103,10 @@ export class HostConnectionService extends Service implements HostConnectionHand
   }
 
   /** Authenticate an index request through the process-token exchange or cookie. */
-  authorizeIndex(request: ConnectionIndexRequest, response: ConnectionIndexResponse): boolean {
+  authorizeIndex(_request: ConnectionIndexRequest, _response: ConnectionIndexResponse): boolean {
     // madazi trusted-host bypass (patch 03): serve the index unconditionally;
-    // access control happens at the platform login gate.
+    // access control happens at the platform login gate. Params unused; the edge
+    // forwardAuth login gate owns access control.
     return true
   }
 
