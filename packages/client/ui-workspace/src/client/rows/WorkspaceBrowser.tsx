@@ -776,6 +776,7 @@ function SearchResults({
   remote,
   resultLimit,
   usePanelInfo,
+  onClearSearch,
   t,
 }: Pick<SessionTreeProps, 'useSessions' | 'useSessionPendingInteraction' | 'open' | 't' | 'usePanelInfo'> & {
   workspaces: readonly WorkspaceView[]
@@ -783,6 +784,8 @@ function SearchResults({
   query: string
   remote: RemoteSearchState
   resultLimit: number
+  /** madazi fork: 退出搜索视图（清空查询词，回到项目列表树）。 */
+  onClearSearch: () => void
 }) {
   const panelActive = usePanelInfo(info => info.activePanelId !== null)
   const list = useSessions(s => s)
@@ -828,7 +831,16 @@ function SearchResults({
           </div>
         )}
         {!pending && results.items.length === 0 && (
-          <div className={css.empty}>{t('search.noMatches')}</div>
+          <div className={css.empty}>
+            <div>{t('search.noMatches')}</div>
+            <button
+              type="button"
+              className={css.searchEmptyClear}
+              onClick={onClearSearch}
+            >
+              {t('search.clear')} — 返回项目列表
+            </button>
+          </div>
         )}
         {results.hasMore && (
           <div className={css.searchStatus}>
@@ -933,6 +945,10 @@ export function WorkspaceBrowser({
   })
   const searchRoot = useRef<HTMLDivElement | null>(null)
   const searchInput = useRef<HTMLInputElement | null>(null)
+  // ★ madazi fork: 反浏览器自动填充锁定。Chromium 会把本输入框当「用户名候选」自动填
+  //   admin（autoComplete=off 对 form-less heuristic 常失效）；readOnly 初始锁定 →
+  //   浏览器绝不会填充只读输入框，首次聚焦时解锁，对正常输入无感。
+  const [searchReadonly, setSearchReadonly] = useState(true)
   // Section-header ＋ opens the picker menu (same popover in wide and rail
   // states; the menu anchors on this button).
   const [wsPickerOpen, setWsPickerOpen] = useState(false)
@@ -1171,6 +1187,13 @@ export function WorkspaceBrowser({
                 maxLength={SEARCH_QUERY_MAX_CODE_UNITS}
                 value={query}
                 tabIndex={searchExpanded ? 0 : -1}
+                // ★ madazi fork: 禁用浏览器自动填充（登录后 Chrome 把本输入框误判为
+                //   用户名框自动填 admin → onChange 把它变成搜索词，侧栏被钉在搜索视图）。
+                readOnly={searchReadonly}
+                onFocus={() => { if (searchReadonly) setSearchReadonly(false) }}
+                autoComplete="off"
+                name="madazi-workspace-search"
+                spellCheck={false}
                 onChange={(e) => { setQuery(sanitizeSearchQuery(e.target.value)) }}
                 onKeyDown={(e) => {
                   if (e.key !== 'Escape') return
@@ -1276,6 +1299,7 @@ export function WorkspaceBrowser({
               query={normalizedQuery}
               remote={remoteSearch}
               resultLimit={searchResultLimit}
+              onClearSearch={() => setQuery('')}
               t={t}
             />
           )

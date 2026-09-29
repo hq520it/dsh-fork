@@ -453,6 +453,23 @@
   font-size: 13px;
 }
 
+/* madazi fork: 搜索空态「清除搜索」返回项目列表按钮 */
+.searchEmptyClear {
+  display: block;
+  margin-top: 10px;
+  padding: 5px 12px;
+  border: 0.5px solid var(--dsw-alias-border-l4);
+  border-radius: 16px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  cursor: pointer;
+}
+.searchEmptyClear:hover {
+  border-color: var(--dsw-alias-accent-primary, #4c8ffd);
+  color: var(--dsw-alias-accent-primary, #4c8ffd);
+}
+
 /* Rename dialog form (same figma dialog family as the create modals). */
 .renameInput {
   box-sizing: border-box;
