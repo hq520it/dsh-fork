@@ -201,7 +201,7 @@ export function gatedList(list: SessionListState): SessionListState {
       byId[sid] = list.byId[sid] as SessionListState['byId'][SessionId]
     }
   }
-  const projectionsBySession = {} as SessionListState['projectionsBySession']
+  const projectionsBySession: Record<SessionId, SessionListState['projectionsBySession'][SessionId]> = {}
   for (const key in list.projectionsBySession) {
     const sid = key as SessionId
     if (Object.hasOwn(list.projectionsBySession, key) && !deniedRow(sid)) {
