@@ -11,11 +11,12 @@
 import type { ReactNode, RefObject } from 'react'
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import {
-  Button, IconFolderClose16, IconPlusOutline16, Menu, Modal, type MenuEntry,
+  Button, IconFolderCloseRegular, IconPlusOutlineRegular, Menu, Modal, type MenuEntry,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
   WorkspaceId, WorkspaceSnapshot, WorkspaceView,
 } from '@deepseek-ai/dsh-api-workspace-controller/client'
+import { workspaceDisplayTitle } from '@deepseek-ai/dsh-api-workspace-controller/default-workspace'
 import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
 import {
   gatedWorkspaces, getMembershipVersion, startMembershipWatch, subscribeMembership,
@@ -45,6 +46,8 @@ export interface WorkspacePickFlowProps {
   onPick: (workspaceId: WorkspaceId) => void
   /** Close the popover (outside click / Escape / post-pick). */
   onClose: () => void
+  /** Report the picking interaction and adoption occupancy. */
+  onBusyChange?: (busy: boolean) => void
   /** Only offer the add action, hide existing workspaces. */
   addOnly?: boolean
   /** Menu opening direction relative to the anchor. */
@@ -69,6 +72,7 @@ export function WorkspacePickFlow({
   onPick,
   onClose,
   addOnly = false,
+  onBusyChange,
   side = 'bottom',
   selectedId,
 }: WorkspacePickFlowProps) {
@@ -96,6 +100,7 @@ export function WorkspacePickFlow({
   // menu action stays disabled — a late outcome must not race a concurrent
   // selection or adoption.
   const flowBusy = flowOpen || pickingFolder
+  useEffect(() => { onBusyChange?.(flowBusy) }, [flowBusy, onBusyChange])
 
   // The occupied hole gates the picking affordance: with no composed flow the
   // entry simply is not there (the seam's documented no-flow default). The
@@ -111,7 +116,7 @@ export function WorkspacePickFlow({
     if (flowOpen && !flowAvailable) setFlowOpen(false)
   }, [flowOpen, flowAvailable])
   const addEntries: MenuEntry[] = flowAvailable
-    ? [{ id: ADD_WORKSPACE, label: t('menu.addWorkspace'), icon: <IconPlusOutline16 size={16} />, disabled: flowBusy }]
+    ? [{ id: ADD_WORKSPACE, label: t('menu.addWorkspace'), icon: <IconPlusOutlineRegular size={16} />, disabled: flowBusy }]
     : []
   // With workspaces listed, the add action pins below the scroll region
   // (divider + always visible); otherwise it IS the menu.
@@ -119,8 +124,8 @@ export function WorkspacePickFlow({
   const items: MenuEntry[] = pinAdd
     ? workspaces.map(workspace => ({
       id: workspace.workspaceId,
-      label: workspace.title,
-      icon: <IconFolderClose16 size={16} />,
+      label: workspaceDisplayTitle(workspace.title, t('workspace.defaultName')),
+      icon: <IconFolderCloseRegular size={16} />,
       disabled: flowBusy,
     }))
     : addEntries

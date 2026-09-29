@@ -201,31 +201,18 @@ export function gatedList(list: SessionListState): SessionListState {
       byId[sid] = list.byId[sid] as SessionListState['byId'][SessionId]
     }
   }
-  const current = list.current !== undefined && !deniedRow(list.current) ? list.current : undefined
-  type SubagentMap = SessionListState['subagentsByParent']
-  const subagentsByParent: Record<SessionId, SubagentMap[SessionId]> = {}
-  for (const parentKey in list.subagentsByParent) {
-    const parent = parentKey as SessionId
-    if (Object.hasOwn(list.subagentsByParent, parentKey) && !hiddenSessionIds.has(parent)) {
-      subagentsByParent[parent] = list.subagentsByParent[parent] as SubagentMap[SessionId]
-    }
-  }
-  type JobsMap = SessionListState['jobsBySession']
-  const jobsBySession: Record<SessionId, JobsMap[SessionId]> = {}
-  for (const jobKey in list.jobsBySession) {
-    const sid = jobKey as SessionId
-    if (Object.hasOwn(list.jobsBySession, jobKey) && !hiddenSessionIds.has(sid)) {
-      jobsBySession[sid] = list.jobsBySession[sid] as JobsMap[SessionId]
+  const projectionsBySession = {} as SessionListState['projectionsBySession']
+  for (const key in list.projectionsBySession) {
+    const sid = key as SessionId
+    if (Object.hasOwn(list.projectionsBySession, key) && !deniedRow(sid)) {
+      projectionsBySession[sid] = list.projectionsBySession[sid] as SessionListState['projectionsBySession'][SessionId]
     }
   }
   const out: SessionListState = {
     ids,
     byId,
-    current,
     phase: list.phase,
-    subagentsByParent,
-    jobsBySession,
-    currentAddress: list.currentAddress,
+    projectionsBySession,
   }
   listCache = { raw: list, v: version, out }
   return out
