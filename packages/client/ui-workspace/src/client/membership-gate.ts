@@ -16,8 +16,11 @@ import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/c
 import type { WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 
-/** Successful refresh cadence; the fence also re-polls on a failure backoff. */
-const MEMBERSHIP_REFRESH_MS = 30_000
+/** Low-frequency fallback cadence. Refresh is primarily event-driven
+ * (login, project_created / member_added broadcasts, `__madaziMembershipRefresh`
+ * from the madazi plugin); this timer only re-syncs when an event was missed —
+ * kept long (5 min) per platform rule: live data pushes, no busy polling. */
+const MEMBERSHIP_REFRESH_MS = 300_000
 /** Failure backoff — shorter so membership returns promptly after a blip. */
 const MEMBERSHIP_RETRY_MS = 5_000
 
